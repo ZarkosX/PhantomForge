@@ -16,7 +16,7 @@ Clones **everything** from one server to another using your personal Discord tok
 
 ## How to Use
 1. ```
-   https://github.com/ZarkosX/PhantomForge.git
+   git clone https://github.com/ZarkosX/PhantomForge.git
    cd PhantomForge
    ```
 2. Install:
