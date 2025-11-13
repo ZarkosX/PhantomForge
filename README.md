@@ -36,12 +36,12 @@ Clones **everything** from one server to another using your personal Discord tok
 
 ## Example
 
-[Phantom] Token: mfa.xxx
-[Phantom] Server ID Copy: 123456789
-[Phantom] Server ID Paste: 987654321
+### [Phantom] Token: mfa.xxx
+### [Phantom] Server ID Copy: 123456789
+### [Phantom] Server ID Paste: 987654321
 
-[Phantom] Cloning...
-[Shadow] SERVER CLONED!
+### [Phantom] Cloning...
+### [Shadow] SERVER CLONED!
 
 
 **By:** Fox (ZarkosX) + Shadow V888  
