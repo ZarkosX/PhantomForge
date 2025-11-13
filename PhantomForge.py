@@ -1,5 +1,5 @@
 """
-PHANTOMFORGE v1.1 - FIXED & WORKING 100%
+PHANTOMFORGE v3.0 - PURE USER ACCOUNT CLONER
 Developer: Shadow V888 | For: Fox
 Run: python PhantomForge.py
 """
@@ -9,116 +9,127 @@ import asyncio
 import os
 import aiohttp
 
-# === إعدادات Self-Bot ===
-intents = discord.Intents.all()
-client = discord.Client(intents=intents)
+# === حسابك الحقيقي فقط – بدون بوت، بدون أي حاجة ===
+client = discord.Client(intents=discord.Intents.all())
 
-async def forge_reality(source_id, target_id):
-    source = client.get_guild(int(source_id))
-    target = client.get_guild(int(target_id))
+async def clone_server(source_id, target_id):
+    source = client.get_guild(source_id)
+    target = client.get_guild(target_id)
 
     if not source or not target:
-        print("[-] Server not found.")
+        print("[-] Server not found. Check IDs.")
         return
 
-    print(f"[Phantom] Forging: {source.name} → {target.name}")
+    print(f"[Phantom] Cloning: {source.name} → {target.name}")
 
-    # مسح الهدف
-    for channel in list(target.channels):
-        try: await channel.delete()
+    # 1. مسح السيرفر الهدف
+    print("[Phantom] Clearing target server...")
+    for ch in list(target.channels):
+        try: await ch.delete()
         except: pass
-    for role in target.roles:
-        if not role.is_default():
-            try: await role.delete()
-            except: pass
+    for role in target.roles[1:]:
+        try: await role.delete()
+        except: pass
 
-    # نسخ الشعار
+    # 2. نسخ الشعار
     if source.icon:
         async with aiohttp.ClientSession() as session:
             async with session.get(source.icon.url) as resp:
-                icon = await resp.read()
-                await target.edit(icon=icon)
-        print("[Phantom] Icon forged")
+                icon_data = await resp.read()
+                await target.edit(icon=icon_data)
+        print("[Phantom] Icon cloned")
 
-    # نسخ الإيموجي
-    print("[Phantom] Forging emojis...")
+    # 3. نسخ الإيموجي
+    print("[Phantom] Cloning emojis...")
     for emoji in source.emojis:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(emoji.url) as resp:
-                    data = await resp.read()
-                    await target.create_custom_emoji(name=emoji.name, image=data)
-            print(f"   [Phantom] {emoji.name}")
+                    img = await resp.read()
+                    await target.create_custom_emoji(name=emoji.name, image=img)
+            print(f"   [Emoji] {emoji.name}")
         except: pass
 
-    # نسخ الرتب
+    # 4. نسخ الرتب
     role_map = {source.default_role.id: target.default_role}
-    print("[Phantom] Forging roles...")
+    print("[Phantom] Cloning roles...")
     for role in reversed(source.roles[1:]):
         try:
             new_role = await target.create_role(
-                name=role.name, permissions=role.permissions,
-                color=role.color, hoist=role.hoist, mentionable=role.mentionable
+                name=role.name,
+                permissions=role.permissions,
+                color=role.color,
+                hoist=role.hoist,
+                mentionable=role.mentionable
             )
             role_map[role.id] = new_role
-            print(f"   [Phantom] {role.name}")
+            print(f"   [Role] {role.name}")
         except: pass
 
-    # نسخ القنوات
-    print("[Phantom] Forging channels...")
-    category_map = {}
-    for channel in source.channels:
+    # 5. نسخ القنوات
+    print("[Phantom] Cloning channels...")
+    cat_map = {}
+    for ch in source.channels:
         try:
-            if isinstance(channel, discord.CategoryChannel):
-                cat = await target.create_category(name=channel.name)
-                for ow in channel.overwrites.items():
-                    t = role_map.get(ow[0].id)
-                    if t: await cat.set_permissions(t, overwrite=ow[1])
-                category_map[channel.id] = cat
-                print(f"   [Phantom] {channel.name}")
+            if isinstance(ch, discord.CategoryChannel):
+                new_cat = await target.create_category(name=ch.name)
+                for target_obj, perm in ch.overwrites.items():
+                    mapped = role_map.get(target_obj.id)
+                    if mapped:
+                        await new_cat.set_permissions(mapped, overwrite=perm)
+                cat_map[ch.id] = new_cat
+                print(f"   [Cat] {ch.name}")
                 continue
 
-            kwargs = {'name': channel.name, 'position': channel.position}
-            if isinstance(channel, discord.TextChannel):
-                kwargs.update({'topic': channel.topic, 'slowmode_delay': channel.slowmode_delay, 'nsfw': channel.nsfw})
-                new_ch = await target.create_text_channel(**kwargs, category=category_map.get(channel.category_id))
+            base = {'name': ch.name}
+            if isinstance(ch, discord.TextChannel):
+                new_ch = await target.create_text_channel(
+                    **base,
+                    category=cat_map.get(ch.category_id),
+                    topic=ch.topic,
+                    slowmode_delay=ch.slowmode_delay,
+                    nsfw=ch.nsfw
+                )
             else:
-                kwargs.update({'bitrate': channel.bitrate, 'user_limit': channel.user_limit})
-                new_ch = await target.create_voice_channel(**kwargs, category=category_map.get(channel.category_id))
+                new_ch = await target.create_voice_channel(
+                    **base,
+                    category=cat_map.get(ch.category_id),
+                    bitrate=ch.bitrate,
+                    user_limit=ch.user_limit
+                )
 
-            for ow in channel.overwrites.items():
-                t = role_map.get(ow[0].id)
-                if t: await new_ch.set_permissions(t, overwrite=ow[1])
+            for target_obj, perm in ch.overwrites.items():
+                mapped = role_map.get(target_obj.id)
+                if mapped:
+                    await new_ch.set_permissions(mapped, overwrite=perm)
 
-            print(f"   [Phantom] {channel.name}")
+            print(f"   [Ch] {ch.name}")
         except Exception as e:
-            print(f"   [-] {e}")
+            print(f"   [-] Failed: {e}")
 
-    print(f"\n[Shadow] SERVER CLONED!")
+    print(f"\n[Shadow] SERVER CLONED SUCCESSFULLY!")
     print(f"[Shadow] {source.name} → {target.name}")
 
-# === لوحة التحكم ===
-def phantom_panel():
+# === الواجهة البسيطة ===
+def run():
     os.system('cls' if os.name == 'nt' else 'clear')
     print("="*60)
-    print("     PHANTOMFORGE - THE SILENT DUPLICATOR")
-    print("               Developer: Shadow V888")
+    print("     PHANTOMFORGE - USER ACCOUNT CLONER")
+    print("          Works with YOUR REAL ACCOUNT")
     print("="*60)
 
-    token = input("\n[Phantom] Token: ").strip()
-    source = input("[Phantom] Server ID Copy: ").strip()
-    target = input("[Phantom] Server ID Paste: ").strip()
+    token = input("\n[?] Your Discord Token: ").strip()
+    src = int(input("[?] Source Server ID: ").strip())
+    dst = int(input("[?] Target Server ID: ").strip())
 
     @client.event
-    async def on_ready():
-        print(f"\n[Phantom] Online: {client.user}")
-        await forge_reality(int(source), int(target))
+    async def on_connect():
+        print(f"\n[Phantom] Logged in as: {client.user}")
+        await clone_server(src, dst)
         await client.close()
 
-    try:
-        client.run(token)  # تم حذف bot=False
-    except Exception as e:
-        print(f"[-] Forge failed: {e}")
+    # تشغيل بحسابك الحقيقي – بدون أي بوت
+    client.run(token, log_handler=None)
 
 if __name__ == "__main__":
-    phantom_panel()
+    run()
